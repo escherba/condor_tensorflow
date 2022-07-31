@@ -1,18 +1,28 @@
+"""
+Ordinal metrics module
+"""
+from typing import Any, Optional, Dict
 import tensorflow as tf
-from tensorflow.keras import backend as K
+from tensorflow.keras import metrics
 
 
-class OrdinalMeanAbsoluteError(tf.keras.metrics.Metric):
+class OrdinalMeanAbsoluteError(metrics.Metric):
     """Computes mean absolute error for ordinal labels."""
 
-    def __init__(self, name="mean_absolute_error_labels",
-                 **kwargs):
+    def __init__(
+            self,
+            name: str = "mean_absolute_error_labels",
+            **kwargs: Any):
         """Creates a `OrdinalMeanAbsoluteError` instance."""
         super().__init__(name=name, **kwargs)
         self.maes = self.add_weight(name='maes', initializer='zeros')
         self.count = self.add_weight(name='count', initializer='zeros')
 
-    def update_state(self, y_true, y_pred, sample_weight=None):
+    def update_state(
+            self,
+            y_true: tf.Tensor,
+            y_pred: tf.Tensor,
+            sample_weight: Optional[tf.Tensor] = None) -> None:
         """Computes mean absolute error for ordinal labels.
 
         Args:
@@ -20,8 +30,6 @@ class OrdinalMeanAbsoluteError(tf.keras.metrics.Metric):
           y_pred: CondorOrdinal Encoded Labels.
           sample_weight (optional): Not implemented.
         """
-
-
         # Predict the label as in Cao et al. - using cumulative probabilities
         cum_probs = tf.math.cumprod(
             tf.math.sigmoid(y_pred),
@@ -54,30 +62,35 @@ class OrdinalMeanAbsoluteError(tf.keras.metrics.Metric):
             self.maes.assign_add(tf.reduce_sum(tf.abs(y_true - labels_v2)))
             self.count.assign_add(tf.cast(tf.size(y_true), tf.float32))
 
-    def result(self):
+    def result(self) -> tf.Tensor:
         return tf.math.divide_no_nan(self.maes, self.count)
 
-    def reset_state(self):
+    def reset_state(self) -> None:
         """Resets all of the metric state variables at the start of each epoch."""
         self.maes.assign(0.0)
         self.count.assign(0.0)
 
-    def get_config(self):
+    def get_config(self) -> Dict[str, Any]:
         """Returns the serializable config of the metric."""
-        config = {}
         base_config = super().get_config()
-        return {**base_config, **config}
+        return {**base_config}
 
 
 class SparseOrdinalMeanAbsoluteError(OrdinalMeanAbsoluteError):
     """Computes mean absolute error for ordinal labels."""
 
-    def __init__(self, name="mean_absolute_error_labels",
-                 **kwargs):
+    def __init__(
+            self,
+            name: str = "mean_absolute_error_labels",
+            **kwargs: Any):
         """Creates a `OrdinalMeanAbsoluteError` instance."""
         super().__init__(name=name, **kwargs)
 
-    def update_state(self, y_true, y_pred, sample_weight=None):
+    def update_state(
+            self,
+            y_true: tf.Tensor,
+            y_pred: tf.Tensor,
+            sample_weight: Optional[tf.Tensor] = None) -> None:
         """Computes mean absolute error for ordinal labels.
 
         Args:
@@ -118,24 +131,29 @@ class SparseOrdinalMeanAbsoluteError(OrdinalMeanAbsoluteError):
             self.maes.assign_add(tf.reduce_sum(tf.abs(y_true - labels_v2)))
             self.count.assign_add(tf.cast(tf.size(y_true), tf.float32))
 
-class OrdinalAccuracy(tf.keras.metrics.Metric):
+
+class OrdinalAccuracy(metrics.Metric):
     """Computes accuracy for ordinal labels (tolerance is allowed rank
     distance to be considered 'correct' predictions)."""
 
-    def __init__(self, name=None,
-                 tolerance=0,
-                 **kwargs):
+    def __init__(
+            self,
+            name: Optional[str] = None,
+            tolerance: float = 0.,
+            **kwargs: Any) -> None:
         """Creates a `OrdinalAccuracy` instance."""
-        if name is not None:
-            super().__init__(name=name, **kwargs)
-        else:
-            super().__init__(name="ordinal_accuracy_tol"+str(tolerance),
-                             **kwargs)
+        if name is None:
+            name = f"ordinal_accuracy_tol{tolerance}"
+        super().__init__(name=name, **kwargs)
         self.accs = self.add_weight(name='accs', initializer='zeros')
         self.count = self.add_weight(name='count', initializer='zeros')
         self.tolerance = tolerance
 
-    def update_state(self, y_true, y_pred, sample_weight=None):
+    def update_state(
+            self,
+            y_true: tf.Tensor,
+            y_pred: tf.Tensor,
+            sample_weight: Optional[tf.Tensor] = None) -> None:
         """Computes accuracy for ordinal labels.
 
         Args:
@@ -167,7 +185,7 @@ class OrdinalAccuracy(tf.keras.metrics.Metric):
 
         if sample_weight is not None:
             values = tf.cast(tf.less_equal(
-                tf.abs(y_true-labels_v2),tf.cast(self.tolerance,y_pred.dtype)),
+                tf.abs(y_true - labels_v2), tf.cast(self.tolerance, y_pred.dtype)),
                 y_pred.dtype)
             sample_weight = tf.cast(tf.squeeze(sample_weight), y_pred.dtype)
             sample_weight = tf.broadcast_to(sample_weight, values.shape)
@@ -176,19 +194,19 @@ class OrdinalAccuracy(tf.keras.metrics.Metric):
             self.count.assign_add(tf.reduce_sum(sample_weight))
         else:
             self.accs.assign_add(tf.reduce_sum(tf.cast(tf.less_equal(
-                tf.abs(y_true-labels_v2),tf.cast(self.tolerance,y_pred.dtype)),
+                tf.abs(y_true - labels_v2), tf.cast(self.tolerance, y_pred.dtype)),
                 y_pred.dtype)))
             self.count.assign_add(tf.cast(tf.size(y_true), tf.float32))
 
-    def result(self):
+    def result(self) -> tf.Tensor:
         return tf.math.divide_no_nan(self.accs, self.count)
 
-    def reset_state(self):
+    def reset_state(self) -> None:
         """Resets all of the metric state variables at the start of each epoch."""
         self.accs.assign(0.0)
         self.count.assign(0.0)
 
-    def get_config(self):
+    def get_config(self) -> Dict[str, Any]:
         """Returns the serializable config of the metric."""
         config = {'tolerance': self.tolerance}
         base_config = super().get_config()
@@ -199,7 +217,11 @@ class SparseOrdinalAccuracy(OrdinalAccuracy):
     """Computes accuracy for ordinal labels (tolerance is allowed rank
     distance to be considered 'correct' predictions)."""
 
-    def update_state(self, y_true, y_pred, sample_weight=None):
+    def update_state(
+            self,
+            y_true: tf.Tensor,
+            y_pred: tf.Tensor,
+            sample_weight: Optional[tf.Tensor] = None) -> None:
         """Computes accuracy for ordinal labels.
 
         Args:
@@ -231,7 +253,7 @@ class SparseOrdinalAccuracy(OrdinalAccuracy):
 
         if sample_weight is not None:
             values = tf.cast(tf.less_equal(
-                tf.abs(y_true-labels_v2),tf.cast(self.tolerance,y_pred.dtype)),
+                tf.abs(y_true - labels_v2), tf.cast(self.tolerance, y_pred.dtype)),
                 y_pred.dtype)
             sample_weight = tf.cast(tf.squeeze(sample_weight), y_pred.dtype)
             sample_weight = tf.broadcast_to(sample_weight, values.shape)
@@ -240,7 +262,6 @@ class SparseOrdinalAccuracy(OrdinalAccuracy):
             self.count.assign_add(tf.reduce_sum(sample_weight))
         else:
             self.accs.assign_add(tf.reduce_sum(tf.cast(tf.less_equal(
-                tf.abs(y_true-labels_v2),tf.cast(self.tolerance,y_pred.dtype)),
+                tf.abs(y_true - labels_v2), tf.cast(self.tolerance, y_pred.dtype)),
                 y_pred.dtype)))
             self.count.assign_add(tf.cast(tf.size(y_true), tf.float32))
-
