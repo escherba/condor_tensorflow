@@ -138,7 +138,7 @@ class CondorNegLogLikelihood(losses.Loss):
             Loss vector, note that tensorflow will reduce it to a single number
             automatically.
         """
-        with ops.name_scope(name, "logistic_loss", [logits, labels]) as name:
+        with ops.name_scope(name, "logistic_loss", [logits, labels]) as scope:
             if isinstance(logits, tf.Tensor):
                 logits = tf.cast(logits, dtype=tf.float32, name="logits")
             else:
@@ -167,7 +167,7 @@ class CondorNegLogLikelihood(losses.Loss):
                 math_ops.log1p(math_ops.exp(neg_abs_logits)),
             )
             return tf.math.reduce_sum(
-                array_ops.where(cond2, temp, zeros), axis=1, name=name
+                array_ops.where(cond2, temp, zeros), axis=1, name=scope
             )
 
     # Following https://www.tensorflow.org/api_docs/python/tf/keras/losses/Loss
