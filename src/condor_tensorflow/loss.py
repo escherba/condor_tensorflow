@@ -85,6 +85,7 @@ def encode_ordinal_labels_v2(
 encode_ordinal_labels = encode_ordinal_labels_v2
 
 
+@tf.keras.utils.register_keras_serializable(package="condor_tensorflow")
 class CondorNegLogLikelihood(losses.Loss):
 
     """Ordinal Negative Log-likelihood Loss
@@ -204,6 +205,7 @@ class CondorNegLogLikelihood(losses.Loss):
         return {**base_config, **config}
 
 
+@tf.keras.utils.register_keras_serializable(package="condor_tensorflow")
 class CondorOrdinalCrossEntropy(losses.Loss):
 
     """Ordinal cross-entropy loss
@@ -315,6 +317,7 @@ class CondorOrdinalCrossEntropy(losses.Loss):
         return {**base_config, **config}
 
 
+@tf.keras.utils.register_keras_serializable(package="condor_tensorflow")
 class OrdinalEarthMoversDistance(losses.Loss):
     """Computes earth movers distance for ordinal labels."""
 

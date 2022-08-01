@@ -6,6 +6,7 @@ import tensorflow as tf
 from tensorflow.keras import metrics
 
 
+@tf.keras.utils.register_keras_serializable(package="condor_tensorflow")
 class OrdinalMeanAbsoluteError(metrics.Metric):
     """Computes mean absolute error for ordinal labels."""
 
@@ -87,6 +88,7 @@ class OrdinalMeanAbsoluteError(metrics.Metric):
         return {**base_config, **config}
 
 
+@tf.keras.utils.register_keras_serializable(package="condor_tensorflow")
 class OrdinalAccuracy(metrics.Metric):
     """Computes accuracy for ordinal labels (tolerance is allowed rank
     distance to be considered 'correct' predictions)."""
