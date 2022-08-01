@@ -85,12 +85,15 @@ def encode_ordinal_labels_v2(
 encode_ordinal_labels = encode_ordinal_labels_v2
 
 
-# The outer function is a constructor to create a loss function using a
-# certain number of classes.
 class CondorNegLogLikelihood(losses.Loss):
+
+    sparse: bool
+    from_type: str
+
     def __init__(
             self,
             from_type: str = "ordinal_logits",
+            sparse: bool = False,
             name: str = "ordinal_nll",
             **kwargs: Any) -> None:
         """Negative log likelihood loss designed for ordinal outcomes.
@@ -107,9 +110,9 @@ class CondorNegLogLikelihood(losses.Loss):
             Loss vector, note that tensorflow will reduce it to a single number
             automatically.
         """
-        self.from_type = from_type
-
         super().__init__(name=name, **kwargs)
+        self.from_type = from_type
+        self.sparse = sparse
 
     # Modifed from: https://github.com/tensorflow/tensorflow/blob/6dcd6fcea73ad613e78039bd1f696c35e63abb32/tensorflow/python/ops/nn_impl.py#L112-L148
     def ordinal_loss(
@@ -173,15 +176,16 @@ class CondorNegLogLikelihood(losses.Loss):
         y_pred = tf.convert_to_tensor(y_pred)
         y_true = tf.cast(y_true, y_pred.dtype)
 
-        # get number of classes
-        # num_classes = tf.shape(y_pred)[1] + 1
+        if self.sparse:
+            # get number of classes
+            num_classes = tf.shape(y_pred)[1] + 1
 
-        # we are not sparse here, so labels are encoded already
-        tf_levels = y_true
+            # Convert each true label to a vector of ordinal level indicators.
+            y_true = encode_ordinal_labels(y_true, num_classes)
 
         from_type = self.from_type
         if from_type == "ordinal_logits":
-            return self.ordinal_loss(y_pred, tf_levels)
+            return self.ordinal_loss(y_pred, y_true)
         if from_type == "probs":
             raise NotImplementedError("not yet implemented")
         if from_type == "logits":
@@ -192,65 +196,22 @@ class CondorNegLogLikelihood(losses.Loss):
         """Get configuration for serializing"""
         config = {
             "from_type": self.from_type,
+            "sparse": self.sparse,
         }
         base_config = super().get_config()
         return {**base_config, **config}
 
 
-# The outer function is a constructor to create a loss function using a
-# certain number of classes.
-class SparseCondorNegLogLikelihood(CondorNegLogLikelihood):
-    def __init__(
-            self,
-            from_type: str = "ordinal_logits",
-            name: str = "ordinal_negLogLikeloss",
-            **kwargs: Any) -> None:
-        """Negative log likelihood loss designed for ordinal outcomes.
-
-        Parameters
-        ----------
-        from_type: one of "ordinal_logits" (default), or "probs".
-          Ordinal logits are the output of a Dense(num_classes-1) layer with no activation.
-          (Not yet implemented) Probs are the probability outputs of a softmax or ordinal_softmax layer.
-
-        Returns
-        ----------
-        loss: tf.Tensor, shape=(num_samples,)
-            Loss vector, note that tensorflow will reduce it to a single number
-            automatically.
-        """
-        super().__init__(name=name, from_type=from_type, **kwargs)
-
-    # Following https://www.tensorflow.org/api_docs/python/tf/keras/losses/Loss
-    def call(self, y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
-
-        # Ensure that y_true is the same type as y_pred (presumably a float).
-        y_pred = tf.convert_to_tensor(y_pred)
-        y_true = tf.cast(y_true, y_pred.dtype)
-
-        # get number of classes
-        num_classes = tf.shape(y_pred)[1] + 1
-
-        # Convert each true label to a vector of ordinal level indicators.
-        tf_levels = encode_ordinal_labels(y_true, num_classes)
-
-        from_type = self.from_type
-        if from_type == "ordinal_logits":
-            return self.ordinal_loss(y_pred, tf_levels)
-        if from_type == "probs":
-            raise NotImplementedError("not yet implemented")
-        if from_type == "logits":
-            raise NotImplementedError("not yet implemented")
-        raise ValueError(f"Unknown from_type value {from_type}")
-
-
 class CondorOrdinalCrossEntropy(losses.Loss):
 
     importance_weights: Optional[TensorLike]
+    sparse: bool
+    from_type: str
 
     def __init__(
             self,
             importance_weights: Optional[TensorLike] = None,
+            sparse: bool = False,
             from_type: str = "ordinal_logits",
             name: str = "ordinal_crossent",
             **kwargs: Any) -> None:
@@ -272,8 +233,8 @@ class CondorOrdinalCrossEntropy(losses.Loss):
             automatically.
         """
         self.importance_weights = importance_weights
+        self.sparse = sparse
         self.from_type = from_type
-
         super().__init__(name=name, **kwargs)
 
     def ordinal_loss(
@@ -321,8 +282,8 @@ class CondorOrdinalCrossEntropy(losses.Loss):
         # get number of classes
         num_classes = tf.shape(y_pred)[1] + 1
 
-        # we are not sparse here, so labels are encoded already
-        tf_levels = y_true
+        if self.sparse:
+            y_true = encode_ordinal_labels(y_true, num_classes)
 
         if self.importance_weights is None:
             importance_weights = tf.ones(num_classes - 1, dtype=tf.float32)
@@ -331,7 +292,7 @@ class CondorOrdinalCrossEntropy(losses.Loss):
 
         from_type = self.from_type
         if from_type == "ordinal_logits":
-            return self.ordinal_loss(y_pred, tf_levels, importance_weights)
+            return self.ordinal_loss(y_pred, y_true, importance_weights)
         if from_type == "probs":
             raise NotImplementedError("not yet implemented")
         if from_type == "logits":
@@ -342,82 +303,26 @@ class CondorOrdinalCrossEntropy(losses.Loss):
         """Get configuration for serializing"""
         config = {
             "importance_weights": self.importance_weights,
+            "sparse": self.sparse,
             "from_type": self.from_type,
         }
         base_config = super().get_config()
         return {**base_config, **config}
 
 
-class SparseCondorOrdinalCrossEntropy(CondorOrdinalCrossEntropy):
-    """Sparse ordinal cross-entropy"""
-
-    def __init__(
-            self,
-            importance_weights: Optional[TensorLike] = None,
-            from_type: str = "ordinal_logits",
-            name: str = "ordinal_crossent",
-            **kwargs: Any) -> None:
-        """Cross-entropy loss designed for ordinal outcomes.
-
-        Parameters
-        ----------
-        importance_weights: tf or np array of floats, shape(numclasses-1,)
-            (Optional) importance weights for each binary classification task.
-
-        from_type: one of "ordinal_logits" (default), or "probs".
-          Ordinal logits are the output of a Dense(num_classes-1) layer with no activation.
-          (Not yet implemented) Probs are the probability outputs of a softmax or ordinal_softmax layer.
-
-        Returns
-        ----------
-        loss: tf.Tensor, shape=(num_samples,)
-            Loss vector, note that tensorflow will reduce it to a single number
-            automatically.
-        """
-        super().__init__(
-            name=name,
-            importance_weights=importance_weights,
-            from_type=from_type,
-            **kwargs
-        )
-
-    # Following https://www.tensorflow.org/api_docs/python/tf/keras/losses/Loss
-    def call(self, y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
-        """Forward pass logic"""
-        # Ensure that y_true is the same type as y_pred (presumably a float).
-        y_pred = tf.convert_to_tensor(y_pred)
-        y_true = tf.cast(y_true, y_pred.dtype)
-
-        # get number of classes
-        num_classes = tf.shape(y_pred)[1] + 1
-
-        # Convert each true label to a vector of ordinal level indicators.
-        tf_levels = encode_ordinal_labels(y_true, num_classes)
-
-        if self.importance_weights is None:
-            importance_weights = tf.ones(num_classes - 1, dtype=tf.float32)
-        else:
-            importance_weights = tf.cast(self.importance_weights, dtype=tf.float32)
-
-        from_type = self.from_type
-        if from_type == "ordinal_logits":
-            return self.ordinal_loss(y_pred, tf_levels, importance_weights)
-        if from_type == "probs":
-            raise NotImplementedError("not yet implemented")
-        if from_type == "logits":
-            raise NotImplementedError("not yet implemented")
-        raise ValueError(f"Unknown from_type value {from_type}")
-
-
 class OrdinalEarthMoversDistance(losses.Loss):
     """Computes earth movers distance for ordinal labels."""
 
+    sparse: bool
+
     def __init__(
             self,
+            sparse: bool = False,
             name: str = "earth_movers_distance",
             **kwargs: Any) -> None:
         """Creates a `OrdinalEarthMoversDistance` instance."""
         super().__init__(name=name, **kwargs)
+        self.sparse = sparse
 
     def call(self, y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
         """Computes mean absolute error for ordinal labels.
@@ -427,14 +332,18 @@ class OrdinalEarthMoversDistance(losses.Loss):
           y_pred: CondorOrdinal Encoded Labels.
         """
 
-        # Ensure that y_true is the same type as y_pred (presumably a float).
         y_pred = tf.convert_to_tensor(y_pred)
 
         # basic setup
         cum_probs = ordinal_softmax(y_pred)
         num_classes = tf.shape(cum_probs)[1]
 
-        y_true = tf.cast(tf.reduce_sum(y_true, axis=1), y_pred.dtype)
+        if not self.sparse:
+            # not sparse: obtain labels from levels
+            y_true = tf.reduce_sum(y_true, axis=1)
+
+        # Ensure that y_true is the same type as y_pred (presumably a float).
+        y_true = tf.cast(y_true, y_pred.dtype)
 
         # remove all dimensions of size 1 (e.g., from [[1], [2]], to [1, 2])
         # y_true = tf.squeeze(y_true)
@@ -448,39 +357,8 @@ class OrdinalEarthMoversDistance(losses.Loss):
 
     def get_config(self) -> Dict[str, Any]:
         """Returns the serializable config of the metric."""
+        config = {
+            "sparse": self.sparse,
+        }
         base_config = super().get_config()
-        return {**base_config}
-
-
-class SparseOrdinalEarthMoversDistance(OrdinalEarthMoversDistance):
-    """Computes earth movers distance for ordinal labels."""
-
-    def __init__(
-            self,
-            **kwargs: Any) -> None:
-        """Creates a `SparseOrdinalEarthMoversDistance` instance."""
-        super().__init__(**kwargs)
-
-    def call(self, y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
-        """Computes mean absolute error for ordinal labels.
-
-        Args:
-          y_true: Cumulatiuve logits from CondorOrdinal layer.
-          y_pred: Sparse Labels with values in {0,1,...,num_classes-1}
-        """
-        # basic set up
-        cum_probs = ordinal_softmax(y_pred)
-        num_classes = tf.shape(cum_probs)[1]
-        y_true = tf.cast(y_true, y_pred.dtype)
-
-        # remove all dimensions of size 1 (e.g., from [[1], [2]], to [1, 2])
-        # y_true = tf.squeeze(y_true)
-
-        # each row has distance to true label
-        y_dist = tf.map_fn(
-            fn=lambda y: tf.abs(y - tf.range(num_classes, dtype=y_pred.dtype)),
-            elems=y_true,
-        )
-
-        # pointwise multiplication by the class probabilities, row-wise sums
-        return tf.reduce_sum(tf.math.multiply(y_dist, cum_probs), axis=1)
+        return {**base_config, **config}
