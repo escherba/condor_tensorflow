@@ -72,6 +72,7 @@ class OrdinalMeanAbsoluteError(metrics.Metric):
             self.count.assign_add(tf.cast(tf.size(y_true), tf.float32))
 
     def result(self) -> tf.Tensor:
+        """Return the scalar metric result"""
         return tf.math.divide_no_nan(self.maes, self.count)
 
     def reset_state(self) -> None:
@@ -162,6 +163,7 @@ class OrdinalAccuracy(metrics.Metric):
             self.count.assign_add(tf.cast(tf.size(y_true), tf.float32))
 
     def result(self) -> tf.Tensor:
+        """Return the scalar metric result"""
         return tf.math.divide_no_nan(self.accs, self.count)
 
     def reset_state(self) -> None:
