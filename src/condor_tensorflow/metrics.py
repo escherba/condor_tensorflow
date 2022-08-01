@@ -41,9 +41,7 @@ class OrdinalMeanAbsoluteError(metrics.Metric):
 
         # Calculate the labels using the style of Cao et al.
         above_thresh = tf.map_fn(
-            lambda x: tf.cast(
-                x > 0.5,
-                tf.float32),
+            lambda x: tf.cast(x > 0.5, tf.float32),
             cum_probs)
 
         # Sum across columns to estimate how many cumulative thresholds are
@@ -130,9 +128,7 @@ class OrdinalAccuracy(metrics.Metric):
 
         # Calculate the labels using the style of Cao et al.
         above_thresh = tf.map_fn(
-            lambda x: tf.cast(
-                x > 0.5,
-                tf.float32),
+            lambda x: tf.cast(x > 0.5, tf.float32),
             cum_probs)
 
         # Sum across columns to estimate how many cumulative thresholds are
