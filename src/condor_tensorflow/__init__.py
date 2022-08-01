@@ -1,3 +1,6 @@
+"""
+Condor-TensorFlow - Condor ordinal loss regression
+"""
 from .version import __version__
 
 from .loss import CondorNegLogLikelihood

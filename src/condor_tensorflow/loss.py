@@ -87,6 +87,8 @@ encode_ordinal_labels = encode_ordinal_labels_v2
 
 class CondorNegLogLikelihood(losses.Loss):
 
+    """Ordinal Negative Log-likelihood Loss
+    """
     sparse: bool
     from_type: str
 
@@ -203,6 +205,9 @@ class CondorNegLogLikelihood(losses.Loss):
 
 
 class CondorOrdinalCrossEntropy(losses.Loss):
+
+    """Ordinal cross-entropy loss
+    """
 
     importance_weights: Optional[TensorLike]
     sparse: bool
