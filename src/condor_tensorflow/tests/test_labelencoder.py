@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 
-def test_labelencoder_basic():
+def test_labelencoder_basic() -> None:
     NUM_CLASSES = 5
     labels = np.arange(NUM_CLASSES)
     enc_labs = CondorOrdinalEncoder(nclasses=NUM_CLASSES).fit_transform(labels)
@@ -17,7 +17,7 @@ def test_labelencoder_basic():
     np.testing.assert_allclose(enc_labs, expected)
 
 
-def test_labelencoder_advanced1():
+def test_labelencoder_advanced1() -> None:
     labels = np.array(['a', 'b', 'c', 'd', 'e'])
     enc_labs = CondorOrdinalEncoder().fit_transform(labels)
     expected = np.array([[0., 0., 0., 0.],
@@ -28,7 +28,7 @@ def test_labelencoder_advanced1():
     np.testing.assert_allclose(enc_labs, expected)
 
 
-def test_labelencoder_advanced2():
+def test_labelencoder_advanced2() -> None:
     labels = ['a', 'b', 'c', 'd', 'e']
     enc_labs = CondorOrdinalEncoder().fit_transform(labels)
     expected = np.array([[0., 0., 0., 0.],
@@ -39,7 +39,7 @@ def test_labelencoder_advanced2():
     np.testing.assert_allclose(enc_labs, expected)
 
 
-def test_labelencoder_advanced3():
+def test_labelencoder_advanced3() -> None:
     labels = ['low', 'med', 'high']
     enc = CondorOrdinalEncoder(categories=[['low', 'med', 'high']])
     enc_labs = enc.fit_transform(labels)
