@@ -48,6 +48,7 @@ def encode_ordinal_labels_v1(
         num_zeros = num_classes - 1 - tf.cast(tf.squeeze(label), tf.int32)
         zero_vec = tf.zeros(shape=(num_zeros), dtype=tf.int32)
         return tf.cast(tf.concat([label_vec, zero_vec], 0), dtype)
+    labels = tf.cast(labels, tf.float32)
     return tf.map_fn(_func, labels)
 
 
