@@ -148,6 +148,8 @@ class CondorNegLogLikelihood(losses.Loss):
                 labs = tf.cast(labels, dtype=tf.float32, name="labs")
             else:
                 labs = ops.convert_to_tensor(labels, dtype=tf.float32, name="labs")
+            # line below makes loss work with 3D tensors
+            # pi_labels = tf.concat([tf.ones((tf.shape(labs)[0], 1)), labs[:, -1][:, :-1]], 1)
             pi_labels = tf.concat([tf.ones((tf.shape(labs)[0], 1)), labs[:, :-1]], 1)
 
             # The logistic loss formula from above is
@@ -168,6 +170,8 @@ class CondorNegLogLikelihood(losses.Loss):
                 math_ops.log1p(math_ops.exp(neg_abs_logits)),
             )
             return tf.math.reduce_sum(
+                # line below makes loss work with 3D tensors
+                # array_ops.where(cond2, temp[:, -1], zeros), axis=1, name=scope
                 array_ops.where(cond2, temp, zeros), axis=1, name=scope
             )
 
