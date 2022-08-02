@@ -27,8 +27,7 @@ def encode_ordinal_labels_numpy(
                [1., 0.],
                [1., 1.]], dtype=float32)
     """
-    result = array[:, None] > np.arange(num_classes)
-    result = result[:, :-1]
+    result = array[:, None] > np.arange(num_classes)[:-1]
     return result.astype(dtype)
 
 
