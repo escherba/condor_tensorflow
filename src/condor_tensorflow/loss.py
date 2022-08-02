@@ -2,6 +2,7 @@
 Loss function definitions
 """
 from typing import Dict, Any, Optional
+import numpy as np
 import tensorflow as tf
 from tensorflow.python.framework import ops, dtypes
 from tensorflow.python.ops import array_ops, math_ops
@@ -9,7 +10,26 @@ from tensorflow.keras import losses
 from tensorflow.keras import backend as K
 
 from .activations import ordinal_softmax
-from .types import TensorLike
+from .types import TensorLike, IntArray, FloatArray
+
+
+def encode_ordinal_labels_numpy(
+        array: IntArray,
+        num_classes: int,
+        dtype: type = np.float32) -> FloatArray:
+    """Encoder ordinal data to one-hot type
+
+    Example:
+
+        >>> labels = np.arange(3)
+        >>> encode_ordinal_labels_numpy(labels, num_classes=3)
+        array([[0., 0.],
+               [1., 0.],
+               [1., 1.]], dtype=float32)
+    """
+    result = array[:, None] > np.arange(num_classes)
+    result = result[:, :-1]
+    return result.astype(dtype)
 
 
 def encode_ordinal_labels_v1(
@@ -28,7 +48,8 @@ def encode_ordinal_labels_v1(
 
     Example:
 
-        >>> encode_ordinal_labels_v1(tf.constant([0, 1, 2], dtype=tf.float32), num_classes=3)
+        >>> labels = tf.constant(np.arange(3), dtype=tf.float32)
+        >>> encode_ordinal_labels_v1(labels, num_classes=3)
         <tf.Tensor: shape=(3, 2), dtype=float32, numpy=
         array([[0., 0.],
                [1., 0.],
@@ -68,7 +89,8 @@ def encode_ordinal_labels_v2(
 
     Example:
 
-        >>> encode_ordinal_labels_v2([0, 1, 2], num_classes=3)
+        >>> labels = tf.constant(np.arange(3), dtype=tf.float32)
+        >>> encode_ordinal_labels_v2(labels, num_classes=3)
         <tf.Tensor: shape=(3, 2), dtype=float32, numpy=
         array([[0., 0.],
                [1., 0.],
