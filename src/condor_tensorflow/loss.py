@@ -364,10 +364,6 @@ class OrdinalEarthMoversDistance(losses.Loss):
         # remove all dimensions of size 1 (e.g., from [[1], [2]], to [1, 2])
         # y_true = tf.squeeze(y_true)
 
-        # y_dist = tf.map_fn(
-        #     fn=lambda y: tf.abs(y - tf.range(num_classes, dtype=y_pred.dtype)),
-        #     elems=y_true,
-        # )
         y_dist = tf.abs(y_true - tf.range(num_classes, dtype=y_pred.dtype))
         return tf.reduce_sum(tf.math.multiply(y_dist, cum_probs), axis=1)
 
