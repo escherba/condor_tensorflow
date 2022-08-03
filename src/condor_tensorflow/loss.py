@@ -13,24 +13,6 @@ from .activations import ordinal_softmax
 from .types import TensorLike, IntArray, FloatArray
 
 
-def encode_ordinal_labels_numpy(
-        array: IntArray,
-        num_classes: int,
-        dtype: type = np.float32) -> FloatArray:
-    """Encoder ordinal data to one-hot type
-
-    Example:
-
-        >>> labels = np.arange(3)
-        >>> encode_ordinal_labels_numpy(labels, num_classes=3)
-        array([[0., 0.],
-               [1., 0.],
-               [1., 1.]], dtype=float32)
-    """
-    result = array[:, None] > np.arange(num_classes)[:-1]
-    return result.astype(dtype)
-
-
 def encode_ordinal_labels_v1(
         labels: tf.Tensor,
         num_classes: int,
