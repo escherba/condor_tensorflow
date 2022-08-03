@@ -1,14 +1,16 @@
-from condor_tensorflow.labelencoder import CondorOrdinalEncoder
-import pytest
-import tensorflow as tf
+"""
+Test module for LabelEncoder
+"""
+# pylint: disable=missing-function-docstring
 import numpy as np
-import pandas as pd
+
+from condor_tensorflow.labelencoder import CondorOrdinalEncoder
 
 
 def test_labelencoder_basic() -> None:
-    NUM_CLASSES = 5
-    labels = np.arange(NUM_CLASSES)
-    enc_labs = CondorOrdinalEncoder(nclasses=NUM_CLASSES).fit_transform(labels)
+    num_classes = 5
+    labels = np.arange(num_classes)
+    enc_labs = CondorOrdinalEncoder(nclasses=num_classes).fit_transform(labels)
     expected = np.array([[0., 0., 0., 0.],
                          [1., 0., 0., 0.],
                          [1., 1., 0., 0.],
