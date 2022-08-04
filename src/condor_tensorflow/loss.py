@@ -28,7 +28,7 @@ def encode_ordinal_labels_v1(
 
     Example:
 
-        >>> labels = tf.constant(np.arange(3), dtype=tf.float32)
+        >>> labels = tf.constant([0, 1, 2], dtype=tf.float32)
         >>> encode_ordinal_labels_v1(labels, num_classes=3)
         <tf.Tensor: shape=(3, 2), dtype=float32, numpy=
         array([[0., 0.],
@@ -69,7 +69,7 @@ def encode_ordinal_labels_v2(
 
     Example:
 
-        >>> labels = tf.constant(np.arange(3), dtype=tf.float32)
+        >>> labels = tf.constant([0, 1, 2], dtype=tf.float32)
         >>> encode_ordinal_labels_v2(labels, num_classes=3)
         <tf.Tensor: shape=(3, 2), dtype=float32, numpy=
         array([[0., 0.],
