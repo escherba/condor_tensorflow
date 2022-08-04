@@ -165,7 +165,6 @@ class CondorNegLogLikelihood(losses.Loss):
             # abs functions.
             zeros = array_ops.zeros_like(logits, dtype=logits.dtype)
             cond = logits >= zeros
-            cond2 = pi_labels > zeros
             relu_logits = array_ops.where(cond, logits, zeros)
             neg_abs_logits = array_ops.where(cond, -logits, logits)
             temp = math_ops.add(
@@ -174,8 +173,8 @@ class CondorNegLogLikelihood(losses.Loss):
             )
             return tf.math.reduce_sum(
                 # line below makes loss work with 3D tensors
-                # array_ops.where(cond2, temp[:, -1], zeros), axis=1, name=scope
-                array_ops.where(cond2, temp, zeros), axis=1, name=scope
+                # array_ops.where(pi_labels > zeros, temp[:, -1], zeros), axis=1, name=scope
+                array_ops.where(pi_labels > zeros, temp, zeros), axis=1, name=scope
             )
 
     # Following https://www.tensorflow.org/api_docs/python/tf/keras/losses/Loss
