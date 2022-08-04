@@ -19,7 +19,7 @@ def test_CondorNegLogLikelihood() -> None:
 
 def test_SparseCondorNegLogLikelihood() -> None:
     loss = CondorNegLogLikelihood(sparse=True)
-    val = loss(tf.constant([2]), tf.constant([[-1., 1.]]))
+    val = loss(tf.constant([2.]), tf.constant([[-1., 1.]]))
     expect = tf.constant(1.6265235)
     tf.debugging.assert_near(val, expect, rtol=1e-5, atol=1e-5)
 

@@ -2,7 +2,6 @@
 Loss function definitions
 """
 from typing import Dict, Any, Optional
-import numpy as np
 import tensorflow as tf
 from tensorflow.python.framework import ops, dtypes
 from tensorflow.python.ops import array_ops, math_ops
@@ -10,7 +9,7 @@ from tensorflow.keras import losses
 from tensorflow.keras import backend as K
 
 from .activations import ordinal_softmax
-from .types import TensorLike, IntArray, FloatArray
+from .types import TensorLike
 
 
 def encode_ordinal_labels_v1(
