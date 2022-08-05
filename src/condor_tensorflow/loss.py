@@ -2,7 +2,6 @@
 Loss function definitions
 """
 from typing import Dict, Any, Optional
-import numpy as np
 import tensorflow as tf
 from tensorflow.python.framework import ops, dtypes
 from tensorflow.python.ops import array_ops, math_ops
@@ -10,7 +9,7 @@ from tensorflow.keras import losses
 from tensorflow.keras import backend as K
 
 from .activations import ordinal_softmax
-from .types import TensorLike, IntArray, FloatArray
+from .types import TensorLike
 
 
 def encode_ordinal_labels_v1(
@@ -29,7 +28,7 @@ def encode_ordinal_labels_v1(
 
     Example:
 
-        >>> labels = tf.constant(np.arange(3), dtype=tf.float32)
+        >>> labels = tf.constant([0, 1, 2], dtype=tf.float32)
         >>> encode_ordinal_labels_v1(labels, num_classes=3)
         <tf.Tensor: shape=(3, 2), dtype=float32, numpy=
         array([[0., 0.],
@@ -48,7 +47,7 @@ def encode_ordinal_labels_v1(
         # This line requires that label values begin at 0. If they start at a higher
         # value it will yield an error.
         num_zeros = num_classes - 1 - tf.cast(tf.squeeze(label), tf.int32)
-        zero_vec = tf.zeros(shape=(num_zeros), dtype=tf.int32)
+        zero_vec = tf.zeros(shape=num_zeros, dtype=tf.int32)
         return tf.cast(tf.concat([label_vec, zero_vec], 0), dtype)
     labels = tf.cast(labels, tf.float32)
     return tf.map_fn(_func, labels)
@@ -70,7 +69,7 @@ def encode_ordinal_labels_v2(
 
     Example:
 
-        >>> labels = tf.constant(np.arange(3), dtype=tf.float32)
+        >>> labels = tf.constant([0, 1, 2], dtype=tf.float32)
         >>> encode_ordinal_labels_v2(labels, num_classes=3)
         <tf.Tensor: shape=(3, 2), dtype=float32, numpy=
         array([[0., 0.],
@@ -122,8 +121,8 @@ class CondorNegLogLikelihood(losses.Loss):
         self.sparse = sparse
 
     # Modifed from: https://github.com/tensorflow/tensorflow/blob/6dcd6fcea73ad613e78039bd1f696c35e63abb32/tensorflow/python/ops/nn_impl.py#L112-L148
+    @staticmethod
     def ordinal_loss(
-            self,
             logits: tf.Tensor,
             labels: tf.Tensor,
             name: Optional[str] = None) -> tf.Tensor:
@@ -134,8 +133,11 @@ class CondorNegLogLikelihood(losses.Loss):
         logits: tf.Tensor, shape=(num_samples,num_classes-1)
             Logit output of the final Dense(num_classes-1) layer.
 
-        levels: tf.Tensor, shape=(num_samples, num_classes-1)
+        labels: tf.Tensor, shape=(num_samples, num_classes-1)
             Encoded lables provided by CondorOrdinalEncoder.
+
+        name: str
+            execution scope name
 
         Returns
         ----------
@@ -166,7 +168,6 @@ class CondorNegLogLikelihood(losses.Loss):
             # abs functions.
             zeros = array_ops.zeros_like(logits, dtype=logits.dtype)
             cond = logits >= zeros
-            cond2 = pi_labels > zeros
             relu_logits = array_ops.where(cond, logits, zeros)
             neg_abs_logits = array_ops.where(cond, -logits, logits)
             temp = math_ops.add(
@@ -175,8 +176,8 @@ class CondorNegLogLikelihood(losses.Loss):
             )
             return tf.math.reduce_sum(
                 # line below makes loss work with 3D tensors
-                # array_ops.where(cond2, temp[:, -1], zeros), axis=1, name=scope
-                array_ops.where(cond2, temp, zeros), axis=1, name=scope
+                # array_ops.where(pi_labels > zeros, temp[:, -1], zeros), axis=1, name=scope
+                array_ops.where(pi_labels > zeros, temp, zeros), axis=1, name=scope
             )
 
     # Following https://www.tensorflow.org/api_docs/python/tf/keras/losses/Loss
@@ -252,8 +253,8 @@ class CondorOrdinalCrossEntropy(losses.Loss):
         self.from_type = from_type
         super().__init__(name=name, **kwargs)
 
+    @staticmethod
     def ordinal_loss(
-            self,
             logits: tf.Tensor,
             levels: tf.Tensor,
             importance_weights: TensorLike) -> tf.Tensor:
