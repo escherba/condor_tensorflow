@@ -3,10 +3,59 @@ Unit tests for ordinal metrics module
 """
 # pylint: disable=invalid-name
 # pylint: disable=missing-function-docstring
+import pytest
+import numpy as np
 import tensorflow as tf
 
 from condor_tensorflow.metrics import OrdinalMeanAbsoluteError
 from condor_tensorflow.metrics import OrdinalAccuracy
+from condor_tensorflow.utils import encode_ordinal_labels_numpy
+
+
+@pytest.mark.parametrize(
+    "klass",
+    [OrdinalMeanAbsoluteError, OrdinalAccuracy]
+)
+def test_sparse_order_invariance(klass: type) -> None:
+    """test order invariance (equal after shuffling)"""
+    for _ in range(10):
+        num_classes = np.random.randint(2, 8)
+        loss = klass(sparse=True)
+        y_true = np.random.randint(0, num_classes, 20)
+        y_pred1 = encode_ordinal_labels_numpy(
+            y_true, num_classes=num_classes)
+        observed1 = loss(y_true, y_pred1)
+        np.random.shuffle(y_true)
+        y_pred2 = encode_ordinal_labels_numpy(
+            y_true, num_classes=num_classes)
+        observed2 = loss(y_true, y_pred2)
+        tf.debugging.assert_near(observed1, observed2)
+
+
+@pytest.mark.parametrize(
+    "klass,condition",
+    [(OrdinalMeanAbsoluteError, "le"), (OrdinalAccuracy, "ge")]
+)
+def test_sparse_inequality1(klass: type, condition: str) -> None:
+    """test expected inequality (equal or worse after shuffling)"""
+    for _ in range(10):
+        num_classes = np.random.randint(2, 8)
+        loss = klass(sparse=True)
+        y_true = np.random.randint(0, num_classes, 20)
+        y_true_orig = y_true.copy()
+        y_pred1 = encode_ordinal_labels_numpy(
+            y_true_orig, num_classes=num_classes)
+        observed1 = loss(y_true_orig, y_pred1)
+        np.random.shuffle(y_true)
+        y_pred2 = encode_ordinal_labels_numpy(
+            y_true, num_classes=num_classes)
+        observed2 = loss(y_true_orig, y_pred2)
+        if condition == "le":
+            tf.debugging.assert_less_equal(observed1, observed2)
+        elif condition == "ge":
+            tf.debugging.assert_greater_equal(observed1, observed2)
+        else:
+            assert False
 
 
 def test_OrdinalMeanAbsoluteError() -> None:
