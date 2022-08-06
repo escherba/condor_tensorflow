@@ -1,7 +1,6 @@
 """
 Unit tests for ordinal loss module
 """
-# pylint: disable=invalid-name
 # pylint: disable=missing-function-docstring
 import pytest
 import numpy as np
@@ -13,84 +12,84 @@ from condor_tensorflow.loss import OrdinalEarthMoversDistance
 from condor_tensorflow.utils import encode_ordinal_labels_numpy
 
 
-def test_CondorNegLogLikelihood() -> None:
+def test_dense_condor_nll_mismatch() -> None:
     loss = CondorNegLogLikelihood()
     val = loss(tf.constant([[1., 1.]]), tf.constant([[-1., 1.]]))
     expect = tf.constant(1.6265235)
     tf.debugging.assert_near(val, expect, rtol=1e-5, atol=1e-5)
 
 
-def test_SparseCondorNegLogLikelihood() -> None:
+def test_sparse_condor_nll_mismatch() -> None:
     loss = CondorNegLogLikelihood(sparse=True)
     val = loss(tf.constant([2.]), tf.constant([[-1., 1.]]))
     expect = tf.constant(1.6265235)
     tf.debugging.assert_near(val, expect, rtol=1e-5, atol=1e-5)
 
 
-def test_CondorOrdinalCrossEntropy() -> None:
+def test_dense_condor_ce_mismatch() -> None:
     loss = CondorOrdinalCrossEntropy()
     val = loss(tf.constant([[1., 1.]]), tf.constant([[-1., 1.]]))
     expect = tf.constant(2.9397845)
     tf.debugging.assert_near(val, expect, rtol=1e-5, atol=1e-5)
 
 
-def test_SparseCondorOrdinalCrossEntropy() -> None:
+def test_soarse_condor_ce_mismatch() -> None:
     loss = CondorOrdinalCrossEntropy(sparse=True)
     val = loss(tf.constant([2]), tf.constant([[-1., 1.]]))
     expect = tf.constant(2.9397845)
     tf.debugging.assert_near(val, expect, rtol=1e-5, atol=1e-5)
 
 
-def test_OrdinalEarthMoversDistance() -> None:
+def test_dense_emd_mismatch() -> None:
     loss = OrdinalEarthMoversDistance()
     val = loss(tf.constant([[1., 1.]]), tf.constant([[-1., 1.]]))
     expect = tf.constant(1.5344467)
     tf.debugging.assert_near(val, expect, rtol=1e-5, atol=1e-5)
 
 
-def test_SparseOrdinalEarthMoversDistance() -> None:
+def test_sparse_emd_mismatch() -> None:
     loss = OrdinalEarthMoversDistance(sparse=True)
     val = loss(tf.constant([2]), tf.constant([[-1., 1.]]))
     expect = tf.constant(1.5344467)
     tf.debugging.assert_near(val, expect, rtol=1e-5, atol=1e-5)
 
 
-def test_CondorNegLogLikelihoodMatch() -> None:
+def test_dense_condor_nll_match() -> None:
     loss = CondorNegLogLikelihood()
     val = loss(tf.constant([[1., 1.]]), tf.constant([[1., 1.]]))
     expect = tf.constant(0.6265235)
     tf.debugging.assert_near(val, expect, rtol=1e-5, atol=1e-5)
 
 
-def test_SparseCondorNegLogLikelihoodMatch() -> None:
+def test_sparse_condor_nll_match() -> None:
     loss = CondorNegLogLikelihood(sparse=True)
     val = loss(tf.constant([2.]), tf.constant([[1., 1.]]))
     expect = tf.constant(0.6265235)
     tf.debugging.assert_near(val, expect, rtol=1e-5, atol=1e-5)
 
 
-def test_CondorOrdinalCrossEntropyMatch() -> None:
+def test_dense_condor_ce_match() -> None:
     loss = CondorOrdinalCrossEntropy()
     val = loss(tf.constant([[1., 1.]]), tf.constant([[1., 1.]]))
     expect = tf.constant(0.9397845)
     tf.debugging.assert_near(val, expect, rtol=1e-5, atol=1e-5)
 
 
-def test_SparseCondorOrdinalCrossEntropyMatch() -> None:
+def test_sparse_condor_ce_match() -> None:
     loss = CondorOrdinalCrossEntropy(sparse=True)
     val = loss(tf.constant([2]), tf.constant([[1., 1.]]))
     expect = tf.constant(0.9397845)
     tf.debugging.assert_near(val, expect, rtol=1e-5, atol=1e-5)
 
 
-def test_OrdinalEarthMoversDistanceMatch() -> None:
+def test_dense_emd_match() -> None:
     loss = OrdinalEarthMoversDistance()
     val = loss(tf.constant([[1., 1.]]), tf.constant([[1., 1.]]))
     expect = tf.constant(0.73449475)
     tf.debugging.assert_near(val, expect, rtol=1e-5, atol=1e-5)
 
 
-def test_SparseOrdinalEarthMoversDistanceMatch() -> None:
+def test_sparse_emd_match() -> None:
     loss = OrdinalEarthMoversDistance(sparse=True)
     val = loss(tf.constant([2]), tf.constant([[1., 1.]]))
     expect = tf.constant(0.73449475)
