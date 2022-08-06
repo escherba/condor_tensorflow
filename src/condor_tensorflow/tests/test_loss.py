@@ -33,7 +33,7 @@ def test_dense_condor_ce_mismatch() -> None:
     tf.debugging.assert_near(val, expect, rtol=1e-5, atol=1e-5)
 
 
-def test_soarse_condor_ce_mismatch() -> None:
+def test_sparse_condor_ce_mismatch() -> None:
     loss = CondorOrdinalCrossEntropy(sparse=True)
     val = loss(tf.constant([2]), tf.constant([[-1., 1.]]))
     expect = tf.constant(2.9397845)
