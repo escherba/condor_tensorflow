@@ -273,23 +273,27 @@ class OrdinalEarthMoversDistance(losses.Loss):
 
     num_classes: Optional[int]
     sparse: bool
+    power: float
 
     def __init__(
             self,
             num_classes: Optional[int] = None,
             sparse: bool = False,
+            power: float = 1.0,
             name: str = "earth_movers_distance",
             **kwargs: Any) -> None:
         """Creates a `OrdinalEarthMoversDistance` instance."""
         super().__init__(name=name, **kwargs)
         self.num_classes = num_classes
         self.sparse = sparse
+        self.power = power
 
     def get_config(self) -> Dict[str, Any]:
         """Returns the serializable config of the metric."""
         config = {
             "num_classes": self.num_classes,
             "sparse": self.sparse,
+            "power": self.power,
         }
         base_config = super().get_config()
         return {**base_config, **config}
@@ -320,5 +324,6 @@ class OrdinalEarthMoversDistance(losses.Loss):
 
         class_probs = ordinal_softmax(y_pred)
         y_dist = tf.abs(y_true - tf.range(self.num_classes, dtype=dtype))
+        y_dist = tf.math.pow(y_dist, self.power)
         loss_values = tf.math.multiply(y_dist, class_probs)
         return _reduce_losses(loss_values, self.reduction)
