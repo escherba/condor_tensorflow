@@ -5,12 +5,33 @@ from typing import Dict, Any, Optional
 import tensorflow as tf
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import array_ops, math_ops
-from tensorflow.keras import losses
-from tensorflow.keras import backend as K
+from tensorflow.keras.losses import Reduction
+
+from keras import losses
+from keras import backend as K
 
 from .activations import ordinal_softmax
-from .types import TensorLike
+from .types import FloatArray
 from .utils import encode_ordinal_labels
+
+
+def _reduce_losses(
+        values: tf.Tensor,
+        reduction: Reduction) -> tf.Tensor:
+    """Reduces loss values to specified reduction."""
+    if reduction == Reduction.NONE:
+        return values
+
+    if reduction in [
+        Reduction.AUTO,
+        Reduction.SUM_OVER_BATCH_SIZE,
+    ]:
+        return tf.reduce_mean(values)
+
+    if reduction == Reduction.SUM:
+        return tf.reduce_sum(values)
+
+    raise ValueError(f"'{reduction}' is not a valid reduction.")
 
 
 @tf.keras.utils.register_keras_serializable(package="condor_tensorflow")
@@ -49,8 +70,7 @@ class CondorNegLogLikelihood(losses.Loss):
     @staticmethod
     def ordinal_loss(
             logits: tf.Tensor,
-            labels: tf.Tensor,
-            name: Optional[str] = None) -> tf.Tensor:
+            labels: tf.Tensor) -> tf.Tensor:
         """Negative log likelihood loss function designed for ordinal outcomes.
 
         Parameters
@@ -61,43 +81,37 @@ class CondorNegLogLikelihood(losses.Loss):
         labels: tf.Tensor, shape=(num_samples, num_classes-1)
             Encoded lables provided by CondorOrdinalEncoder.
 
-        name: str
-            execution scope name
-
         Returns
         ----------
         loss: tf.Tensor, shape=(num_samples,)
             Loss vector, note that tensorflow will reduce it to a single number
             automatically.
         """
-        with ops.name_scope(name, "logistic_loss", [logits, labels]) as scope:
-            logits = tf.cast(logits, dtype=tf.float32, name="logits")
-            labs = tf.cast(labels, dtype=tf.float32, name="labs")
-            # line below makes loss work with 3D tensors
-            # pi_labels = tf.concat([tf.ones((tf.shape(labs)[0], 1)), labs[:, -1][:, :-1]], 1)
-            pi_labels = tf.concat([tf.ones((tf.shape(labs)[0], 1)), labs[:, :-1]], 1)
+        logits = tf.cast(logits, dtype=tf.float32)
+        labs = tf.cast(labels, dtype=tf.float32)
+        # line below makes loss work with 3D tensors
+        # pi_labels = tf.concat([tf.ones((tf.shape(labs)[0], 1)), labs[:, -1][:, :-1]], 1)
+        pi_labels = tf.concat([tf.ones((tf.shape(labs)[0], 1)), labs[:, :-1]], 1)
 
-            # The logistic loss formula from above is
-            #   x - x * z + log(1 + exp(-x))
-            # For x < 0, a more numerically stable formula is
-            #   -x * z + log(1 + exp(x))
-            # Note that these two expressions can be combined into the following:
-            #   max(x, 0) - x * z + log(1 + exp(-abs(x)))
-            # To allow computing gradients at zero, we define custom versions of max and
-            # abs functions.
-            zeros = array_ops.zeros_like(logits, dtype=logits.dtype)
-            cond = logits >= zeros
-            relu_logits = array_ops.where(cond, logits, zeros)
-            neg_abs_logits = array_ops.where(cond, -logits, logits)
-            temp = math_ops.add(
-                relu_logits - logits * labs,
-                math_ops.log1p(math_ops.exp(neg_abs_logits)),
-            )
-            return tf.math.reduce_sum(
-                # line below makes loss work with 3D tensors
-                # array_ops.where(pi_labels > zeros, temp[:, -1], zeros), axis=1, name=scope
-                array_ops.where(pi_labels > zeros, temp, zeros), axis=1, name=scope
-            )
+        # The logistic loss formula from above is
+        #   x - x * z + log(1 + exp(-x))
+        # For x < 0, a more numerically stable formula is
+        #   -x * z + log(1 + exp(x))
+        # Note that these two expressions can be combined into the following:
+        #   max(x, 0) - x * z + log(1 + exp(-abs(x)))
+        # To allow computing gradients at zero, we define custom versions of max and
+        # abs functions.
+        zeros = array_ops.zeros_like(logits, dtype=logits.dtype)
+        cond = logits >= zeros
+        relu_logits = array_ops.where(cond, logits, zeros)
+        neg_abs_logits = array_ops.where(cond, -logits, logits)
+        temp = math_ops.add(
+            relu_logits - logits * labs,
+            math_ops.log1p(math_ops.exp(neg_abs_logits)),
+        )
+        # line below makes loss work with 3D tensors
+        # array_ops.where(pi_labels > zeros, temp[:, -1], zeros)
+        return array_ops.where(pi_labels > zeros, temp, zeros)
 
     # Following https://www.tensorflow.org/api_docs/python/tf/keras/losses/Loss
     def call(self, y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
@@ -116,12 +130,14 @@ class CondorNegLogLikelihood(losses.Loss):
 
         from_type = self.from_type
         if from_type == "ordinal_logits":
-            return self.ordinal_loss(y_pred, y_true)
-        if from_type == "probs":
+            loss_values = self.ordinal_loss(y_pred, y_true)
+        elif from_type == "probs":
             raise NotImplementedError("not yet implemented")
-        if from_type == "logits":
+        elif from_type == "logits":
             raise NotImplementedError("not yet implemented")
-        raise ValueError(f"Unknown from_type value {from_type}")
+        else:
+            raise ValueError(f"Unknown from_type value {from_type}")
+        return _reduce_losses(loss_values, self.reduction)
 
     def get_config(self) -> Dict[str, Any]:
         """Get configuration for serializing"""
@@ -139,13 +155,13 @@ class CondorOrdinalCrossEntropy(losses.Loss):
     """Ordinal cross-entropy loss
     """
 
-    importance_weights: Optional[TensorLike]
+    importance_weights: Optional[FloatArray]
     sparse: bool
     from_type: str
 
     def __init__(
             self,
-            importance_weights: Optional[TensorLike] = None,
+            importance_weights: Optional[FloatArray] = None,
             sparse: bool = False,
             from_type: str = "ordinal_logits",
             name: str = "ordinal_crossent",
@@ -167,16 +183,16 @@ class CondorOrdinalCrossEntropy(losses.Loss):
             Loss vector, note that tensorflow will reduce it to a single number
             automatically.
         """
+        super().__init__(name=name, **kwargs)
         self.importance_weights = importance_weights
         self.sparse = sparse
         self.from_type = from_type
-        super().__init__(name=name, **kwargs)
 
     @staticmethod
     def ordinal_loss(
             logits: tf.Tensor,
             levels: tf.Tensor,
-            importance_weights: Optional[TensorLike] = None) -> tf.Tensor:
+            importance_weights: Optional[FloatArray] = None) -> tf.Tensor:
         """Cross-entropy loss function designed for ordinal outcomes.
 
         Parameters
@@ -205,7 +221,7 @@ class CondorOrdinalCrossEntropy(losses.Loss):
         if importance_weights is not None:
             importance_weights = tf.cast(importance_weights, dtype=loss_values.dtype)
             loss_values = tf.multiply(loss_values, importance_weights)
-        return -tf.reduce_sum(loss_values, axis=1)
+        return loss_values
 
     # Following https://www.tensorflow.org/api_docs/python/tf/keras/losses/Loss
     def call(self, y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
@@ -222,12 +238,14 @@ class CondorOrdinalCrossEntropy(losses.Loss):
 
         from_type = self.from_type
         if from_type == "ordinal_logits":
-            return self.ordinal_loss(y_pred, y_true, self.importance_weights)
-        if from_type == "probs":
+            loss_values = self.ordinal_loss(y_pred, y_true, self.importance_weights)
+        elif from_type == "probs":
             raise NotImplementedError("not yet implemented")
-        if from_type == "logits":
+        elif from_type == "logits":
             raise NotImplementedError("not yet implemented")
-        raise ValueError(f"Unknown from_type value {from_type}")
+        else:
+            raise ValueError(f"Unknown from_type value {from_type}")
+        return -_reduce_losses(loss_values, self.reduction)
 
     def get_config(self) -> Dict[str, Any]:
         """Get configuration for serializing"""
@@ -282,7 +300,8 @@ class OrdinalEarthMoversDistance(losses.Loss):
         if y_true.ndim == 1:
             y_true = tf.expand_dims(y_true, axis=1)
         y_dist = tf.abs(y_true - tf.range(num_classes, dtype=dtype))
-        return tf.reduce_sum(tf.math.multiply(y_dist, cum_probs), axis=1)
+        loss_values = tf.math.multiply(y_dist, cum_probs)
+        return _reduce_losses(loss_values, self.reduction)
 
     def get_config(self) -> Dict[str, Any]:
         """Returns the serializable config of the metric."""
