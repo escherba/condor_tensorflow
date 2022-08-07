@@ -13,7 +13,7 @@ from condor_tensorflow.utils import encode_ordinal_labels_numpy
 
 
 def test_dense_condor_nll_mismatch() -> None:
-    loss = CondorNegLogLikelihood()
+    loss = CondorNegLogLikelihood(sparse=False)
     val = loss(tf.constant([[1., 1.]]), tf.constant([[-1., 1.]]))
     expect = tf.constant(0.81326175)
     tf.debugging.assert_near(val, expect, rtol=1e-5, atol=1e-5)
@@ -27,7 +27,7 @@ def test_sparse_condor_nll_mismatch() -> None:
 
 
 def test_dense_condor_ce_mismatch() -> None:
-    loss = CondorOrdinalCrossEntropy()
+    loss = CondorOrdinalCrossEntropy(sparse=False)
     val = loss(tf.constant([[1., 1.]]), tf.constant([[-1., 1.]]))
     expect = tf.constant(1.4698925)
     tf.debugging.assert_near(val, expect, rtol=1e-5, atol=1e-5)
@@ -41,7 +41,7 @@ def test_sparse_condor_ce_mismatch() -> None:
 
 
 def test_dense_emd_mismatch() -> None:
-    loss = OrdinalEarthMoversDistance()
+    loss = OrdinalEarthMoversDistance(sparse=False)
     val = loss(tf.constant([[1., 1.]]), tf.constant([[-1., 1.]]))
     expect = tf.constant(0.51148224)
     tf.debugging.assert_near(val, expect, rtol=1e-5, atol=1e-5)
@@ -55,7 +55,7 @@ def test_sparse_emd_mismatch() -> None:
 
 
 def test_dense_condor_nll_match() -> None:
-    loss = CondorNegLogLikelihood()
+    loss = CondorNegLogLikelihood(sparse=False)
     val = loss(tf.constant([[1., 1.]]), tf.constant([[1., 1.]]))
     expect = tf.constant(0.31326172)
     tf.debugging.assert_near(val, expect, rtol=1e-5, atol=1e-5)
@@ -69,7 +69,7 @@ def test_sparse_condor_nll_match() -> None:
 
 
 def test_dense_condor_ce_match() -> None:
-    loss = CondorOrdinalCrossEntropy()
+    loss = CondorOrdinalCrossEntropy(sparse=False)
     val = loss(tf.constant([[1., 1.]]), tf.constant([[1., 1.]]))
     expect = tf.constant(0.46989256)
     tf.debugging.assert_near(val, expect, rtol=1e-5, atol=1e-5)
@@ -83,7 +83,7 @@ def test_sparse_condor_ce_match() -> None:
 
 
 def test_dense_emd_match() -> None:
-    loss = OrdinalEarthMoversDistance()
+    loss = OrdinalEarthMoversDistance(sparse=False)
     val = loss(tf.constant([[1., 1.]]), tf.constant([[1., 1.]]))
     expect = tf.constant(0.24483162)
     tf.debugging.assert_near(val, expect, rtol=1e-5, atol=1e-5)

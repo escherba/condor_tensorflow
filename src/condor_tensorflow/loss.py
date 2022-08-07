@@ -45,7 +45,7 @@ class CondorNegLogLikelihood(losses.Loss):
     def __init__(
             self,
             num_classes: Optional[int] = None,
-            sparse: bool = False,
+            sparse: bool = True,
             from_type: str = "ordinal_logits",
             name: str = "ordinal_nll",
             **kwargs: Any) -> None:
@@ -166,7 +166,7 @@ class CondorOrdinalCrossEntropy(losses.Loss):
     def __init__(
             self,
             num_classes: Optional[int] = None,
-            sparse: bool = False,
+            sparse: bool = True,
             importance_weights: Optional[FloatArray] = None,
             from_type: str = "ordinal_logits",
             name: str = "ordinal_crossent",
@@ -278,7 +278,7 @@ class OrdinalEarthMoversDistance(losses.Loss):
     def __init__(
             self,
             num_classes: Optional[int] = None,
-            sparse: bool = False,
+            sparse: bool = True,
             power: float = 1.0,
             name: str = "earth_movers_distance",
             **kwargs: Any) -> None:
