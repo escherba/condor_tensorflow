@@ -3,7 +3,6 @@ Loss function definitions
 """
 from typing import Dict, Any, Optional
 import tensorflow as tf
-from tensorflow.python.framework import ops
 from tensorflow.python.ops import array_ops, math_ops
 from tensorflow.keras.losses import Reduction
 
