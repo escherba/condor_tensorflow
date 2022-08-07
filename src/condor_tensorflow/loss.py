@@ -253,7 +253,10 @@ class CondorOrdinalCrossEntropy(losses.Loss):
 
 @tf.keras.utils.register_keras_serializable(package="condor_tensorflow")
 class OrdinalEarthMoversDistance(losses.Loss):
-    """Computes earth movers distance for ordinal labels."""
+    """Computes earth movers distance for ordinal labels.
+
+    See https://arxiv.org/abs/1611.05916
+    """
 
     sparse: bool
 
