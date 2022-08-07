@@ -4,7 +4,7 @@ Activation functions
 import tensorflow as tf
 
 
-@tf.function
+@tf.keras.utils.register_keras_serializable(package="condor_tensorflow")
 def ordinal_softmax(logits: tf.Tensor) -> tf.Tensor:
     """ Convert the ordinal logit output of CondorOrdinal() to label probabilities.
 

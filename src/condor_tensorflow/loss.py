@@ -253,7 +253,10 @@ class CondorOrdinalCrossEntropy(losses.Loss):
 
 @tf.keras.utils.register_keras_serializable(package="condor_tensorflow")
 class OrdinalEarthMoversDistance(losses.Loss):
-    """Computes earth movers distance for ordinal labels."""
+    """Computes earth movers distance for ordinal labels.
+
+    See https://arxiv.org/abs/1611.05916
+    """
 
     sparse: bool
 
@@ -273,8 +276,12 @@ class OrdinalEarthMoversDistance(losses.Loss):
           y_true: Cumulative logits from CondorOrdinal layer.
           y_pred: CondorOrdinal Encoded Labels.
         """
-        y_true = tf.convert_to_tensor(y_true)
         y_pred = tf.convert_to_tensor(y_pred)
+        dtype = y_pred.dtype
+
+        # Ensure that y_true is the same type as y_pred (presumably a float).
+        y_true = tf.convert_to_tensor(y_true)
+        y_true = tf.cast(y_true, dtype=dtype)
 
         # basic setup
         cum_probs = ordinal_softmax(y_pred)
@@ -284,12 +291,9 @@ class OrdinalEarthMoversDistance(losses.Loss):
             # not sparse: obtain labels from levels
             y_true = tf.reduce_sum(y_true, axis=1)
 
-        # Ensure that y_true is the same type as y_pred (presumably a float).
-        y_true = tf.cast(y_true, y_pred.dtype)
-
         if y_true.ndim == 1:
             y_true = tf.expand_dims(y_true, axis=1)
-        y_dist = tf.abs(y_true - tf.range(num_classes, dtype=y_pred.dtype))
+        y_dist = tf.abs(y_true - tf.range(num_classes, dtype=dtype))
         return tf.reduce_sum(tf.math.multiply(y_dist, cum_probs), axis=1)
 
     def get_config(self) -> Dict[str, Any]:
