@@ -101,9 +101,12 @@ class CondorNegLogLikelihood(losses.Loss):
         """
         logits = tf.cast(logits, dtype=tf.float32)
         labs = tf.cast(labels, dtype=tf.float32)
-        # line below makes loss work with 3D tensors
-        # pi_labels = tf.concat([tf.ones((tf.shape(labs)[0], 1)), labs[:, -1][:, :-1]], 1)
-        pi_labels = tf.concat([tf.ones((tf.shape(labs)[0], 1)), labs[:, :-1]], 1)
+        if len(labs.get_shape()) == 3:
+            labs_tmp = labs[:, -1][:, :-1]
+        else:
+            labs_tmp = labs[:, :-1]
+        # pi_labels = tf.concat([tf.ones((tf.shape(labs)[0], 1)), labs_tmp], 1)
+        pi_labels = tf.concat([tf.ones((tf.shape(labs)[0], 1)), labs_tmp], 1)
 
         # The logistic loss formula from above is
         #   x - x * z + log(1 + exp(-x))
@@ -121,8 +124,8 @@ class CondorNegLogLikelihood(losses.Loss):
             relu_logits - logits * labs,
             math_ops.log1p(math_ops.exp(neg_abs_logits)),
         )
-        # line below makes loss work with 3D tensors
-        # array_ops.where(pi_labels > zeros, temp[:, -1], zeros)
+        if len(temp.get_shape()) == 3:
+            temp = temp[:, -1]
         return array_ops.where(pi_labels > zeros, temp, zeros)
 
     # Following https://www.tensorflow.org/api_docs/python/tf/keras/losses/Loss
