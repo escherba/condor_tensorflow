@@ -71,14 +71,8 @@ class CondorNegLogLikelihood(losses.Loss):
             automatically.
         """
         with ops.name_scope(name, "logistic_loss", [logits, labels]) as scope:
-            if isinstance(logits, tf.Tensor):
-                logits = tf.cast(logits, dtype=tf.float32, name="logits")
-            else:
-                logits = ops.convert_to_tensor(logits, dtype=tf.float32, name="logits")
-            if isinstance(labels, tf.Tensor):
-                labs = tf.cast(labels, dtype=tf.float32, name="labs")
-            else:
-                labs = ops.convert_to_tensor(labels, dtype=tf.float32, name="labs")
+            logits = tf.cast(logits, dtype=tf.float32, name="logits")
+            labs = tf.cast(labels, dtype=tf.float32, name="labs")
             # line below makes loss work with 3D tensors
             # pi_labels = tf.concat([tf.ones((tf.shape(labs)[0], 1)), labs[:, -1][:, :-1]], 1)
             pi_labels = tf.concat([tf.ones((tf.shape(labs)[0], 1)), labs[:, :-1]], 1)
@@ -280,7 +274,6 @@ class OrdinalEarthMoversDistance(losses.Loss):
         dtype = y_pred.dtype
 
         # Ensure that y_true is the same type as y_pred (presumably a float).
-        y_true = tf.convert_to_tensor(y_true)
         y_true = tf.cast(y_true, dtype=dtype)
 
         # basic setup
