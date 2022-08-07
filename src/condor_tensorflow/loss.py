@@ -3,89 +3,14 @@ Loss function definitions
 """
 from typing import Dict, Any, Optional
 import tensorflow as tf
-from tensorflow.python.framework import ops, dtypes
+from tensorflow.python.framework import ops
 from tensorflow.python.ops import array_ops, math_ops
 from tensorflow.keras import losses
 from tensorflow.keras import backend as K
 
 from .activations import ordinal_softmax
 from .types import TensorLike
-
-
-def encode_ordinal_labels_v1(
-        labels: tf.Tensor,
-        num_classes: int,
-        dtype: dtypes.DType = tf.float32) -> tf.Tensor:
-    """Convert ordinal label to one-host representation
-
-    Args:
-        labels (tf.Tensor): a tensor of ordinal labels (starting with zero)
-        num_classes (int): assumed number of classes
-        dtype (dtypes.DType): result data type
-
-    Returns:
-        tf.Tensor: a tensor of levels (one-hot-encoded labels)
-
-    Example:
-
-        >>> labels = tf.constant([0, 1, 2], dtype=tf.float32)
-        >>> encode_ordinal_labels_v1(labels, num_classes=3)
-        <tf.Tensor: shape=(3, 2), dtype=float32, numpy=
-        array([[0., 0.],
-               [1., 0.],
-               [1., 1.]], dtype=float32)>
-
-    Calling this is equivalent to:
-
-        levels = [1] * label + [0] * (num_classes - 1 - label)
-    """
-    def _func(label: tf.Tensor) -> tf.Tensor:
-        # Original code that we are trying to replicate:
-        # levels = [1] * label + [0] * (num_classes - 1 - label)
-        label_vec = tf.repeat(1, tf.cast(tf.squeeze(label), tf.int32))
-
-        # This line requires that label values begin at 0. If they start at a higher
-        # value it will yield an error.
-        num_zeros = num_classes - 1 - tf.cast(tf.squeeze(label), tf.int32)
-        zero_vec = tf.zeros(shape=num_zeros, dtype=tf.int32)
-        return tf.cast(tf.concat([label_vec, zero_vec], 0), dtype)
-    labels = tf.cast(labels, tf.float32)
-    return tf.map_fn(_func, labels)
-
-
-def encode_ordinal_labels_v2(
-        labels: tf.Tensor,
-        num_classes: int,
-        dtype: dtypes.DType = tf.float32) -> tf.Tensor:
-    """Convert ordinal label to one-hot representation
-
-    Args:
-        labels (tf.Tensor): a tensor of ordinal labels (starting with zero)
-        num_classes (int): assumed number of classes
-        dtype (dtypes.DType): result data type
-
-    Returns:
-        tf.Tensor: a tensor of levels (one-hot-encoded labels)
-
-    Example:
-
-        >>> labels = tf.constant([0, 1, 2], dtype=tf.float32)
-        >>> encode_ordinal_labels_v2(labels, num_classes=3)
-        <tf.Tensor: shape=(3, 2), dtype=float32, numpy=
-        array([[0., 0.],
-               [1., 0.],
-               [1., 1.]], dtype=float32)>
-
-    Calling this is equivalent to:
-
-        levels = [1] * label + [0] * (num_classes - 1 - label)
-    """
-    # This function uses tf.sequence_mask(), which is vectorized, and avoids
-    # map_fn() call.
-    return tf.sequence_mask(labels, maxlen=num_classes - 1, dtype=dtype)
-
-
-encode_ordinal_labels = encode_ordinal_labels_v2
+from .utils import encode_ordinal_labels
 
 
 @tf.keras.utils.register_keras_serializable(package="condor_tensorflow")
@@ -348,7 +273,7 @@ class OrdinalEarthMoversDistance(losses.Loss):
           y_true: Cumulative logits from CondorOrdinal layer.
           y_pred: CondorOrdinal Encoded Labels.
         """
-
+        y_true = tf.convert_to_tensor(y_true)
         y_pred = tf.convert_to_tensor(y_pred)
 
         # basic setup
@@ -362,9 +287,8 @@ class OrdinalEarthMoversDistance(losses.Loss):
         # Ensure that y_true is the same type as y_pred (presumably a float).
         y_true = tf.cast(y_true, y_pred.dtype)
 
-        # remove all dimensions of size 1 (e.g., from [[1], [2]], to [1, 2])
-        # y_true = tf.squeeze(y_true)
-
+        if y_true.ndim == 1:
+            y_true = tf.expand_dims(y_true, axis=1)
         y_dist = tf.abs(y_true - tf.range(num_classes, dtype=y_pred.dtype))
         return tf.reduce_sum(tf.math.multiply(y_dist, cum_probs), axis=1)
 
