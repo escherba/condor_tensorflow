@@ -39,13 +39,15 @@ class CondorNegLogLikelihood(losses.Loss):
 
     """Ordinal Negative Log-likelihood Loss
     """
+    num_classes: Optional[int]
     sparse: bool
     from_type: str
 
     def __init__(
             self,
-            from_type: str = "ordinal_logits",
+            num_classes: Optional[int] = None,
             sparse: bool = False,
+            from_type: str = "ordinal_logits",
             name: str = "ordinal_nll",
             **kwargs: Any) -> None:
         """Negative log likelihood loss designed for ordinal outcomes.
@@ -63,8 +65,19 @@ class CondorNegLogLikelihood(losses.Loss):
             automatically.
         """
         super().__init__(name=name, **kwargs)
-        self.from_type = from_type
+        self.num_classes = num_classes
         self.sparse = sparse
+        self.from_type = from_type
+
+    def get_config(self) -> Dict[str, Any]:
+        """Get configuration for serializing"""
+        config = {
+            "num_classes": self.num_classes,
+            "from_type": self.from_type,
+            "sparse": self.sparse,
+        }
+        base_config = super().get_config()
+        return {**base_config, **config}
 
     # Modifed from: https://github.com/tensorflow/tensorflow/blob/6dcd6fcea73ad613e78039bd1f696c35e63abb32/tensorflow/python/ops/nn_impl.py#L112-L148
     @staticmethod
@@ -121,12 +134,12 @@ class CondorNegLogLikelihood(losses.Loss):
         y_pred = tf.convert_to_tensor(y_pred)
         y_true = tf.cast(y_true, y_pred.dtype)
 
-        if self.sparse:
-            # get number of classes
-            num_classes = tf.shape(y_pred)[1] + 1
+        if self.num_classes is None:
+            self.num_classes = int(y_pred.get_shape().as_list()[1]) + 1
 
+        if self.sparse:
             # Convert each true label to a vector of ordinal level indicators.
-            y_true = encode_ordinal_labels(y_true, num_classes)
+            y_true = encode_ordinal_labels(y_true, self.num_classes)
 
         from_type = self.from_type
         if from_type == "ordinal_logits":
@@ -139,15 +152,6 @@ class CondorNegLogLikelihood(losses.Loss):
             raise ValueError(f"Unknown from_type value {from_type}")
         return _reduce_losses(loss_values, self.reduction)
 
-    def get_config(self) -> Dict[str, Any]:
-        """Get configuration for serializing"""
-        config = {
-            "from_type": self.from_type,
-            "sparse": self.sparse,
-        }
-        base_config = super().get_config()
-        return {**base_config, **config}
-
 
 @tf.keras.utils.register_keras_serializable(package="condor_tensorflow")
 class CondorOrdinalCrossEntropy(losses.Loss):
@@ -155,14 +159,16 @@ class CondorOrdinalCrossEntropy(losses.Loss):
     """Ordinal cross-entropy loss
     """
 
-    importance_weights: Optional[FloatArray]
+    num_classes: Optional[int]
     sparse: bool
+    importance_weights: Optional[FloatArray]
     from_type: str
 
     def __init__(
             self,
-            importance_weights: Optional[FloatArray] = None,
+            num_classes: Optional[int] = None,
             sparse: bool = False,
+            importance_weights: Optional[FloatArray] = None,
             from_type: str = "ordinal_logits",
             name: str = "ordinal_crossent",
             **kwargs: Any) -> None:
@@ -184,9 +190,21 @@ class CondorOrdinalCrossEntropy(losses.Loss):
             automatically.
         """
         super().__init__(name=name, **kwargs)
+        self.num_classes = num_classes
         self.importance_weights = importance_weights
         self.sparse = sparse
         self.from_type = from_type
+
+    def get_config(self) -> Dict[str, Any]:
+        """Get configuration for serializing"""
+        config = {
+            "num_classes": self.num_classes,
+            "importance_weights": self.importance_weights,
+            "sparse": self.sparse,
+            "from_type": self.from_type,
+        }
+        base_config = super().get_config()
+        return {**base_config, **config}
 
     @staticmethod
     def ordinal_loss(
@@ -197,7 +215,7 @@ class CondorOrdinalCrossEntropy(losses.Loss):
 
         Parameters
         ----------
-        logits: tf.Tensor, shape=(num_samples,num_classes-1)
+        logits: tf.Tensor, shape=(num_samples, num_classes-1)
             Logit output of the final Dense(num_classes-1) layer.
 
         levels: tf.Tensor, shape=(num_samples, num_classes-1)
@@ -231,10 +249,11 @@ class CondorOrdinalCrossEntropy(losses.Loss):
         y_true = tf.cast(y_true, y_pred.dtype)
 
         # get number of classes
-        num_classes = tf.shape(y_pred)[1] + 1
+        if self.num_classes is None:
+            self.num_classes = int(y_pred.get_shape().as_list()[1]) + 1
 
         if self.sparse:
-            y_true = encode_ordinal_labels(y_true, num_classes)
+            y_true = encode_ordinal_labels(y_true, self.num_classes)
 
         from_type = self.from_type
         if from_type == "ordinal_logits":
@@ -247,34 +266,34 @@ class CondorOrdinalCrossEntropy(losses.Loss):
             raise ValueError(f"Unknown from_type value {from_type}")
         return -_reduce_losses(loss_values, self.reduction)
 
-    def get_config(self) -> Dict[str, Any]:
-        """Get configuration for serializing"""
-        config = {
-            "importance_weights": self.importance_weights,
-            "sparse": self.sparse,
-            "from_type": self.from_type,
-        }
-        base_config = super().get_config()
-        return {**base_config, **config}
-
 
 @tf.keras.utils.register_keras_serializable(package="condor_tensorflow")
 class OrdinalEarthMoversDistance(losses.Loss):
     """Computes earth movers distance for ordinal labels.
-
-    See https://arxiv.org/abs/1611.05916
     """
 
+    num_classes: Optional[int]
     sparse: bool
 
     def __init__(
             self,
+            num_classes: Optional[int] = None,
             sparse: bool = False,
             name: str = "earth_movers_distance",
             **kwargs: Any) -> None:
         """Creates a `OrdinalEarthMoversDistance` instance."""
         super().__init__(name=name, **kwargs)
+        self.num_classes = num_classes
         self.sparse = sparse
+
+    def get_config(self) -> Dict[str, Any]:
+        """Returns the serializable config of the metric."""
+        config = {
+            "num_classes": self.num_classes,
+            "sparse": self.sparse,
+        }
+        base_config = super().get_config()
+        return {**base_config, **config}
 
     def call(self, y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
         """Computes mean absolute error for ordinal labels.
@@ -290,8 +309,8 @@ class OrdinalEarthMoversDistance(losses.Loss):
         y_true = tf.cast(y_true, dtype=dtype)
 
         # basic setup
-        class_probs = ordinal_softmax(y_pred)
-        num_classes = tf.shape(class_probs)[1]
+        if self.num_classes is None:
+            self.num_classes = int(y_pred.get_shape().as_list()[1]) + 1
 
         if not self.sparse:
             # not sparse: obtain labels from levels
@@ -299,14 +318,8 @@ class OrdinalEarthMoversDistance(losses.Loss):
 
         if y_true.ndim == 1:
             y_true = tf.expand_dims(y_true, axis=1)
-        y_dist = tf.abs(y_true - tf.range(num_classes, dtype=dtype))
+
+        class_probs = ordinal_softmax(y_pred)
+        y_dist = tf.abs(y_true - tf.range(self.num_classes, dtype=dtype))
         loss_values = tf.math.multiply(y_dist, class_probs)
         return _reduce_losses(loss_values, self.reduction)
-
-    def get_config(self) -> Dict[str, Any]:
-        """Returns the serializable config of the metric."""
-        config = {
-            "sparse": self.sparse,
-        }
-        base_config = super().get_config()
-        return {**base_config, **config}
