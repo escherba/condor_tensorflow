@@ -176,7 +176,7 @@ class CondorOrdinalCrossEntropy(losses.Loss):
     def ordinal_loss(
             logits: tf.Tensor,
             levels: tf.Tensor,
-            importance_weights: TensorLike) -> tf.Tensor:
+            importance_weights: Optional[TensorLike] = None) -> tf.Tensor:
         """Cross-entropy loss function designed for ordinal outcomes.
 
         Parameters
@@ -198,14 +198,14 @@ class CondorOrdinalCrossEntropy(losses.Loss):
         """
         logprobs = tf.math.cumsum(tf.math.log_sigmoid(logits), axis=1)
         eps = K.epsilon()
-        return -tf.reduce_sum(
-            importance_weights
-            * (
-                logprobs * levels
-                + (tf.math.log(1 - tf.math.exp(logprobs) + eps) * (1 - levels))
-            ),
-            axis=1,
+        loss_values = (
+            logprobs * levels
+            + (tf.math.log(1 - tf.math.exp(logprobs) + eps) * (1 - levels))
         )
+        if importance_weights is not None:
+            importance_weights = tf.cast(importance_weights, dtype=loss_values.dtype)
+            loss_values = tf.multiply(loss_values, importance_weights)
+        return -tf.reduce_sum(loss_values, axis=1)
 
     # Following https://www.tensorflow.org/api_docs/python/tf/keras/losses/Loss
     def call(self, y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
@@ -220,14 +220,9 @@ class CondorOrdinalCrossEntropy(losses.Loss):
         if self.sparse:
             y_true = encode_ordinal_labels(y_true, num_classes)
 
-        if self.importance_weights is None:
-            importance_weights = tf.ones(num_classes - 1, dtype=tf.float32)
-        else:
-            importance_weights = tf.cast(self.importance_weights, dtype=tf.float32)
-
         from_type = self.from_type
         if from_type == "ordinal_logits":
-            return self.ordinal_loss(y_pred, y_true, importance_weights)
+            return self.ordinal_loss(y_pred, y_true, self.importance_weights)
         if from_type == "probs":
             raise NotImplementedError("not yet implemented")
         if from_type == "logits":
