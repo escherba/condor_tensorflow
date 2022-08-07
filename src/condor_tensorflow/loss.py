@@ -315,7 +315,7 @@ class OrdinalEarthMoversDistance(losses.Loss):
             # not sparse: obtain labels from levels
             y_true = tf.reduce_sum(y_true, axis=1)
 
-        if y_true.ndim == 1:
+        if len(y_true.get_shape()) == 1:
             y_true = tf.expand_dims(y_true, axis=1)
 
         class_probs = ordinal_softmax(y_pred)
