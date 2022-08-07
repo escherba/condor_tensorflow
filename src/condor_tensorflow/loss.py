@@ -290,8 +290,8 @@ class OrdinalEarthMoversDistance(losses.Loss):
         y_true = tf.cast(y_true, dtype=dtype)
 
         # basic setup
-        cum_probs = ordinal_softmax(y_pred)
-        num_classes = tf.shape(cum_probs)[1]
+        class_probs = ordinal_softmax(y_pred)
+        num_classes = tf.shape(class_probs)[1]
 
         if not self.sparse:
             # not sparse: obtain labels from levels
@@ -300,7 +300,7 @@ class OrdinalEarthMoversDistance(losses.Loss):
         if y_true.ndim == 1:
             y_true = tf.expand_dims(y_true, axis=1)
         y_dist = tf.abs(y_true - tf.range(num_classes, dtype=dtype))
-        loss_values = tf.math.multiply(y_dist, cum_probs)
+        loss_values = tf.math.multiply(y_dist, class_probs)
         return _reduce_losses(loss_values, self.reduction)
 
     def get_config(self) -> Dict[str, Any]:
